@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title> </title>
+        <title> Post Listing </title>
+        <meta name="viewport" content="minimum-scale=1, initial-scale=1, width=device-width"/>
     </head>
     <body>
         <div id="root">
@@ -11,10 +12,203 @@
         <script src="js/react.development.js"></script>
         <script src="js/react-dom.development.js"></script>
         <script src="js/babel.js"></script>
+        <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 
         <script type="text/babel">
 
             const rootHandle = document.getElementById('root')
+            const { useState, useEffect } = React
+            
+            const CheckLikeDislike = (props) => {
+                const { likeCheck, handleLikeChange, dislikeCheck, handleDisLikeChange } = props
+                return (
+                    <div>
+                        <label>Like Only</label>
+                        <input type="checkbox" checked={ likeCheck } onChange={ handleLikeChange }/>    
+                        <label>Dislike Only</label>
+                        <input type="checkbox" checked={ dislikeCheck } onChange={ handleDisLikeChange }/> 
+                    </div>
+                )
+            }
+
+            const SearchBar = (props) => {
+                const { searchValue, handleSearch } = props
+                return(
+                    <input type="text" value={ searchValue } onChange={ handleSearch }/>
+                )
+            }
+
+            const Post = (props) => {
+                const { selectedData,seeMore,increaseLike,increaseDisLike } = props
+                return (
+                    <div>
+                        <table border='1'>
+                            <thead>
+                                <tr>
+                                    <th> Id </th>    
+                                    <th> Title </th>    
+                                    <th> Body </th>    
+                                    <th> Like </th>    
+                                    <th> Dislike </th>    
+                                </tr>    
+                            </thead>  
+                            <tbody>
+                                {
+                                    selectedData.map((data) => {
+                                        return (
+                                            <tr key={ data.id }>
+                                                <td>{ data.id }</td>
+                                                <td>{ data.title }</td>
+                                                <td>{ data.body }</td>
+                                                <td>
+                                                    <button 
+                                                    onClick={ ()=> {increaseLike(data.id) }}
+                                                    >Like</button>
+                                                    { data.like }
+                                                </td>
+                                                <td>
+                                                    <button 
+                                                    onClick={()=> { increaseDisLike(data.id) }}
+                                                    >Dislike</button> 
+                                                    { data.dislike }
+                                                </td>
+                                            </tr>
+                                        )
+                                    })
+                                } 
+                            </tbody>  
+                        </table>
+                        <button onClick={ seeMore }>See More</button>
+                    </div>
+                )
+            }
+
+            function App(props){
+
+                const url = 'https://jsonplaceholder.typicode.com/posts'
+                const [ posts, setPosts ] = useState([])
+                const [ index, setIndex ] = useState(0)
+                const [ toggle, setToggle ] = useState(false)
+                
+                const [ selectedPost, setSelectedPost ] = useState([])
+                const [ selectedData, setSelectedData ] = useState([])
+
+                const [ searchValue, setSearchValue ] = useState('')
+
+                const [ likeCheck, setLikeCheck ] = useState(false)
+                const [ dislikeCheck, setDislikeCheck ] = useState(false)
+
+                useEffect(() => {
+                    axios.get(url)
+                    .then((res) => {
+                        const data = res.data
+                        const result = data.map((d) => {
+                            return { ...d, ...{ like:0, dislike:0 }}
+                        })
+                        setPosts(result)
+                        setToggle(!toggle)
+                    })
+                },[])
+
+                useEffect(() => {
+                    const select = posts.slice(index, index+10)
+                    const result = selectedData.concat(select)
+                    setSelectedData(result)
+                    setSelectedPost(result)
+                },[toggle])
+
+                const seeMore = () => {
+                    setIndex(index+10)
+                    setToggle(!toggle)
+                }
+
+                const increaseLike = (id) => {
+                    const result = selectedData.map((ele) => {
+                        if(ele.id === id){
+                            return { ...ele, ...{ like : ele.like + 1 } }
+                        }else{
+                            return { ...ele }
+                        }
+                    })
+                    setSelectedData(result)
+                    setSelectedPost(result)
+                }
+
+                const increaseDisLike = (id) => {
+                    const result = selectedData.map((ele) => {
+                        if(ele.id === id){
+                            return { ...ele, ...{ dislike : ele.dislike + 1 } }
+                        }else{
+                            return { ...ele }
+                        }
+                    })
+                    setSelectedData(result)
+                    setSelectedPost(result)
+                }
+
+                const handleSearch = (e) => {
+                    const d = e.target.value 
+                    setSearchValue(d)
+                    const result = selectedPost.filter((ele) => {
+                        return ele.title.includes(d)
+                    })
+                    if( result.length ){
+                        setSelectedData(result)
+                    }
+                }
+
+                const handleLikeChange = (e) => {
+                    const check = e.target.checked
+                    setLikeCheck(e.target.checked)
+                    if(check){
+                        const result = selectedPost.filter((ele) => {
+                            return ele.like > 0
+                        })
+                        setSelectedData(result)
+                    }else{
+                        setSelectedData(selectedPost)
+                    }
+                    
+                }
+                
+                const handleDisLikeChange = (e) => {
+                    const check = e.target.checked 
+                    setDislikeCheck(e.target.checked)
+                    if(check){
+                        const result = selectedPost.filter((ele) => {
+                            return ele.dislike > 0
+                        })
+                        setSelectedData(result)
+                    }else{
+                        setSelectedData(selectedPost)
+                    }
+                    
+                }
+                
+                return (
+                    <div>
+                        <SearchBar 
+                        searchValue={ searchValue } 
+                        handleSearch={ handleSearch }/> 
+                        <br/>
+                        <CheckLikeDislike 
+                            likeCheck={ likeCheck } 
+                            dislikeCheck={ dislikeCheck } 
+                            handleLikeChange={ handleLikeChange } 
+                            handleDisLikeChange={handleDisLikeChange}/>
+                        { 
+                            selectedData.length > 0 && 
+                            <Post 
+                                selectedData={selectedData} 
+                                seeMore={ seeMore }
+                                increaseLike={ increaseLike }
+                                increaseDisLike={ increaseDisLike }/>
+                        }
+                    </div>
+                )
+            } 
+               
+            ReactDOM.render(<App/>, rootHandle)
 
         </script>
     </body>
